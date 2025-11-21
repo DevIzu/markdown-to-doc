@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Lock, CheckCircle, ExternalLink } from 'lucide-react';
+import { Key, Lock, ExternalLink } from 'lucide-react'; // CheckCircle removed
 
 interface ApiKeyModalProps {
   isOpen: boolean;

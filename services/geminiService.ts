@@ -45,7 +45,8 @@ export const convertMarkdownToHtml = async (markdown: string, apiKey: string): P
     html = html.replace(/<hr>/gi, '');
 
     // 3. FORCE NON-BOLD HEADINGS: Inject inline style into h1-h6 tags
-    html = html.replace(/<h([1-6])(.*?)>/gi, (match, level, attributes) => {
+    // Renamed 'match' to '_match'
+    html = html.replace(/<h([1-6])(.*?)>/gi, (_match, level, attributes) => {
       // If style already exists, append to it; otherwise add it
       if (attributes.includes('style="')) {
         return `<h${level}${attributes.replace('style="', 'style="font-weight: normal; ')}>`;
