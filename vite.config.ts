@@ -1,11 +1,12 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv } from 'vite' // loadEnv is still needed
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // We use '.' instead of process.cwd() to avoid TypeScript errors.
-  const _env = loadEnv(mode, '.', ''); // Renamed 'env' to '_env'
+  // The following line caused the error because the calculated variable was not used.
+  // const _env = loadEnv(mode, '.', ''); 
+  
+  // We don't need to load env variables here if they aren't used in this config.
 
   return {
     plugins: [react()],
