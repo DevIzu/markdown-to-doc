@@ -1,0 +1,5 @@
+{
+  "name": "Markdown to Doc Converter",
+  "description": "A tool to bulk convert Markdown files into Google Docs compatible format using Gemini AI, preserving tables and cleaning formatting.",
+  "requestFramePermissions": []
+}
