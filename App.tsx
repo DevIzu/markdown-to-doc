@@ -1,14 +1,15 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { DocFile, ProcessingStatus } from './types';
 import { FileSidebar } from './components/FileSidebar';
 import { PreviewPane } from './components/PreviewPane';
 import { Dropzone } from './components/Dropzone';
 import { convertMarkdownToHtml } from './services/geminiService';
-import { Sparkles, Settings } from 'lucide-react';
+import { Sparkles, Wand2 } from 'lucide-react';
 import { ConfirmationModal } from './components/ConfirmationModal';
-import { ApiKeyModal } from './components/ApiKeyModal';
 import { FAQSection } from './components/FAQSection';
 import { Footer } from './components/Footer';
+import { ApiKeyModal } from './components/ApiKeyModal';
+import { convertMarkdownToHtml as convertService } from './services/geminiService';
 
 // Simple ID generator
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -18,7 +19,7 @@ const App: React.FC = () => {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [apiKey, setApiKey] = useState<string>('');
-  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   // Modal States
   const [confirmationState, setConfirmationState] = useState<{
@@ -31,33 +32,30 @@ const App: React.FC = () => {
     type: 'clear'
   });
 
-  // --- API Key Logic ---
-
-  useEffect(() => {
-    // 1. Check Local Storage immediately
-    const storedKey = localStorage.getItem('GEMINI_API_KEY');
+  // Check for API key on mount and show modal after 3s if missing
+  React.useEffect(() => {
+    const storedKey = localStorage.getItem('gemini_api_key');
     if (storedKey) {
       setApiKey(storedKey);
     } else {
-      // 2. If no key, set timeout to show modal after 3 seconds
       const timer = setTimeout(() => {
-        setShowKeyModal(true);
+        setShowApiKeyModal(true);
       }, 3000);
       return () => clearTimeout(timer);
     }
   }, []);
 
   const handleSaveApiKey = (key: string) => {
-    localStorage.setItem('GEMINI_API_KEY', key);
+    localStorage.setItem('gemini_api_key', key);
     setApiKey(key);
-    setShowKeyModal(false);
+    setShowApiKeyModal(false);
   };
 
   // --- Processing Logic ---
 
   const processFiles = async (fileList: DocFile[]) => {
     if (!apiKey) {
-      setShowKeyModal(true);
+      setShowApiKeyModal(true);
       return;
     }
 
@@ -77,7 +75,7 @@ const App: React.FC = () => {
 
     for (const file of filesToProcess) {
       try {
-        const html = await convertMarkdownToHtml(file.originalContent, apiKey);
+        const html = await convertService(file.originalContent, apiKey);
         
         setFiles(prev => prev.map(f => 
           f.id === file.id 
@@ -186,16 +184,21 @@ const App: React.FC = () => {
   const selectedFile = files.find(f => f.id === selectedFileId) || null;
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-gray-50 via-gray-50 to-white font-sans flex flex-col">
-      {/* API Key Modal */}
+    <div className="min-h-screen w-full bg-[#f8fafc] font-sans flex flex-col relative overflow-x-hidden">
+      
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-purple-200/30 blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-blue-200/30 blur-[120px]"></div>
+      </div>
+
       <ApiKeyModal 
-        isOpen={showKeyModal}
+        isOpen={showApiKeyModal}
         onSave={handleSaveApiKey}
-        onClose={() => setShowKeyModal(false)}
+        onClose={() => setShowApiKeyModal(false)}
         hasExistingKey={!!apiKey}
       />
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
         title={confirmationState.type === 'clear' ? "Clear Queue?" : "Replace Existing Files?"}
@@ -210,27 +213,35 @@ const App: React.FC = () => {
       />
 
       {/* Header */}
-      <header className="w-full bg-white border-b border-gray-200/80 sticky top-0 z-30 backdrop-blur-md bg-white/80">
+      <header className="w-full sticky top-0 z-40 glass border-b border-slate-200/60">
         <div className="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-1.5 rounded-lg shadow-lg shadow-blue-200">
-              <Sparkles size={20} />
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-lg shadow-blue-500/20">
+              <Wand2 size={20} />
             </div>
-            <h1 className="text-lg font-bold text-gray-800 tracking-tight">Markdown Converter</h1>
+            <div>
+              <h1 className="text-lg font-bold text-slate-800 tracking-tight leading-none">MD to Doc</h1>
+              <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">AI Converter</span>
+            </div>
           </div>
+          
           <button 
-            onClick={() => setShowKeyModal(true)}
-            className="text-sm font-medium text-gray-500 hover:text-gray-900 flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            onClick={() => setShowApiKeyModal(true)}
+            className="text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full"
           >
-            <Settings size={16} />
-            API Settings
+            {apiKey ? 'API Key Configured' : 'Setup API Key'}
           </button>
         </div>
       </header>
 
       {/* Main Working Area */}
-      <main className="flex-1 w-full max-w-[1600px] mx-auto p-6">
-        <div className="flex w-full h-[800px] shadow-2xl shadow-gray-200/50 bg-white rounded-2xl overflow-hidden border border-gray-200/60">
+      <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 md:p-6 z-10 relative">
+        {/* 
+            Responsive Height Calculation:
+            - h-[calc(100vh-9rem)]: Calculates height based on viewport minus header/padding.
+            - min-h-[600px]: Prevents it from getting too small on mobile.
+        */}
+        <div className="flex flex-col md:flex-row w-full h-[calc(100vh-9rem)] min-h-[600px] bg-white rounded-2xl overflow-hidden shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-200/60 ring-1 ring-slate-900/5">
           
           {/* Sidebar */}
           <FileSidebar 
@@ -245,25 +256,38 @@ const App: React.FC = () => {
           />
 
           {/* Main Content */}
-          <div className="flex-1 flex flex-col h-full relative bg-gray-50/50">
+          <div className="flex-1 flex flex-col h-full relative bg-slate-50/50">
             {files.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8">
-                <div className="text-center max-w-xl animate-in fade-in zoom-in duration-500">
-                  <h2 className="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">
-                    Convert Markdown to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Google Docs</span>
+              <div className="flex-1 flex flex-col items-center justify-center p-8 animate-fade-in">
+                <div className="text-center max-w-xl">
+                  <div className="inline-flex items-center justify-center p-2 bg-blue-50 rounded-full mb-6 ring-1 ring-blue-100">
+                     <Sparkles size={16} className="text-blue-600 mr-2" />
+                     <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">AI-Powered Formatting</span>
+                  </div>
+                  <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6 tracking-tight">
+                    Markdown to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Google Docs</span>
                   </h2>
-                  <p className="text-gray-500 text-lg mb-10 leading-relaxed">
-                    Preserve your tables, clean up formatting, and get ready-to-paste HTML or DOCX files in seconds.
+                  <p className="text-slate-500 text-lg mb-10 leading-relaxed">
+                    Transform your raw markdown into perfectly formatted documents. Tables, headers, and lists—handled instantly.
                   </p>
-                  <div className="bg-white p-1.5 rounded-2xl shadow-xl border border-gray-100 transform transition-transform hover:scale-[1.01] duration-300">
+                  
+                  <div className="bg-white p-2 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 transform transition-all hover:scale-[1.01] duration-300">
                      <Dropzone onFilesAdded={handleFilesAdded} />
                   </div>
-                  <div className="mt-8 flex items-center justify-center gap-4 text-sm text-gray-400">
-                    <span className="flex items-center gap-1.5"><Sparkles size={14} className="text-yellow-500" /> AI Powered</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                    <span>Secure & Private</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                    <span>Fast Processing</span>
+                  
+                  <div className="mt-10 grid grid-cols-3 gap-8 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-slate-800 mb-1">100%</div>
+                      <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Client Side</div>
+                    </div>
+                    <div>
+                       <div className="text-2xl font-bold text-slate-800 mb-1">0s</div>
+                       <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Wait Time</div>
+                    </div>
+                    <div>
+                       <div className="text-2xl font-bold text-slate-800 mb-1">Free</div>
+                       <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Unlimited</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -274,19 +298,12 @@ const App: React.FC = () => {
         </div>
 
         {/* FAQ Section */}
-        <div className="mt-12">
+        <div className="mt-16 mb-12">
           <FAQSection />
         </div>
       </main>
 
-      {/* Footer */}
       <Footer />
-      
-      {/* Background decoration */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-[-1] overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-100/30 blur-[100px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-100/30 blur-[100px]"></div>
-      </div>
     </div>
   );
 };
